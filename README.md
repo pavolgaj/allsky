@@ -11,9 +11,8 @@ This is the source code for the Wireless Allsky Camera project described [on Ins
 
 In order to get the camera working properly you will need the following hardware:
 
- * An ASI camera from ZWO. Tested cameras include ASI120MC*, ASI120MM*, ASI120MC-S, ASI120MM-S, ASI224MC, ASI178MC, ASI185MC, ASI290MC, ASI1600MC
- * A Raspberry Pi 2 or 3
- * A USB wireless dongle if using a Pi 2. [This one](https://www.amazon.ca/Edimax-EW-7811Un-150Mbps-Raspberry-Supports/dp/B003MTTJOY) has been tested.
+ * A camera (Tested cameras include Raspberry Pi HQ camera, ASI120MC*, ASI120MM*, ASI120MC-S, ASI120MM-S, ASI224MC, ASI178MC, ASI185MC, ASI290MC, ASI1600MC
+ * A Raspberry Pi (2, 3, 4 or zero)
 
 **Note:*** Owners of USB2.0 cameras such as ASI120MC and ASI120MM may need to do a [firmware upgrade](https://astronomy-imaging-camera.com/software/) (This changes the camera to use 512 byte packets instead of 1024 which makes it more compatible with most hardware.)
 
@@ -42,9 +41,6 @@ Then navigate to the allsky directory:
 ```shell
 cd allsky
 ```
-Now, before running the install script, if you're running a Pi 2, it may not be compatible with armv7 architecture. Run ```cat /proc/cpuinfo``` to know your processor model. If it doesn't say ARMv7, you'll need to change the first line of Makefile to say ```platform = armv6```.
-
-Use of allsky on non-ARM platforms is unsupported (there isn't yet an easy, portable installer) but should be possible. Have a look at `install.sh` to see what needs to be done. Additionally, you'll need to download the [SDK](https://astronomy-imaging-camera.com/software-drivers).
 
 Now, run the install script:
 
@@ -89,12 +85,15 @@ nano settings.json
 | filename | image.jpg | this is the name used across the app. Supported extensions are JPG and PNG. |
 | flip | 0 | 0=Original, 1=Horizontal, 2=Vertical, 3=Both |
 | text | text | Text overlay. **Note**: It is replaced by timestamp if time=1 |
+| extratext | | (ZWO ONLY) The FULL path to a text file which will be displayed under the Exposure/Gain. The file can contain multiple lines which will be displayed underneath each other |
+| extratextage | 600 | (ZWO ONLY) If using the extra text file then it must be updated within this number of seconds, if not it will not be displayed. Set to 0 to ignore this check and always didplay it |
+| textlineheight | 30 | (ZWO ONLY) The line height of the text displayed in the image, if you chnage the font size the adjust this value if required |
 | textx | 15 | Horizontal text placement from the left |
 | texty | 35 | Vertical text placement from the top |
 | fontname | 0 | Font type for the overlay. 0=Simplex, 1=Plain, 2=Duplex, 3=Complex, 4=Triplex, 5=Complex small, 6=Script simplex, 7=Script complex |
-| fontcolor | 255 255 255 | Font color in BGR |
-| smallfontcolor | 0 0 255 | Small Font color in BGR |
-| fontsize | 0.7 | Font size |
+| fontcolor | 255 255 255 | Font color in BGR. NOTE: When using RAW 16 only the B and G values are used i.e. 255 128 0 |
+| smallfontcolor | 0 0 255 | Small Font color in BGR. NOTE: When using RAW 16 only the B and G values are used i.e. 255 128 0 |
+| fontsize | 7 | Font size |
 | fonttype | 0 | Controls the smoothness of the fonts. 0=Antialiased, 1=8 Connected, 2=4 Connected. |
 | fontline | 1 | font line thickness |
 | latitude | 60.7N | Latitude of the camera. N for North and S for South
@@ -112,10 +111,12 @@ nano config.sh
 
 | Configuration     | Default     | Additional Info |
 | ----------- | ----------- | ----------------|
+| CAMERA | ZWO | Choose between ZWO and RPiHQ
 | UPLOAD_IMG | false | Set to true to upload (ftp) the current image to a server (website, blog, host, etc) |
 | UPLOAD_VIDEO | false | Set to true to upload the timelapse to a server |
 | POST_END_OF_NIGHT_DATA | false | Set to true to send some data to your server at the end of each night |
 | TIMELAPSE | true | Build a timelapse at the end of the night |
+| FPS | 25 | The timelapse frame rate (frames per second)
 | KEOGRAM | true | Builds a keogram at the end of the night |
 | UPLOAD_KEOGRAM | false | Set to true to upload the keogram to your server |
 | STARTRAILS | true | Stacks images to create a startrail at the end of the night |
@@ -123,17 +124,28 @@ nano config.sh
 | UPLOAD_STARTRAILS | false | Set to true to uplad the startrails to your server |
 | AUTO_DELETE | true | Enables automatic deletion of old images and videos |
 | NIGHTS_TO_KEEP | 14 | Number of nights to keep before starting deleting. Needs AUTO_DELETE=true to work. |
-| DARK_FRAME | dark.png | Path to the dark frame use for hot pixels subtraction. |
+| DARK_FRAME_SUBTRACTION | false | Set to true to enable hot pixels subtraction at night. |
 | DAYTIME | 1 | Set to 0 to disable daytime liveview. |
-| CAMERA_SETTINGS | /home/pi/allsky/settings.json | Path to the camera settings file. **Note**: If using the GUI, this path will change to /var/www/html/settings.json |
+| CAPTURE_24HR | false | Set to true to save images during both night and day |
+| CAMERA_SETTINGS | /home/pi/allsky/settings.json | Path to the camera settings file. **Note**: If using the GUI, this path will change to /etc/raspap/settings.json |
+| CROP_IMAGE | false | Crop the captured image BEFORE any other processing. This inproves the subsequent images when using a fisheye lens |
+| CROP_WIDTH | n/a | The width of the resulting image |
+| CROP_HEIGHT | n/a | The height of the resulting image |
+| CROP_OFFSET_X | 0 | The x offset to use when cropping |
+| CROP_OFFSET_Y | 0 | The y offset to use when cropping |
+| AUTO_STRETCH | false | If enabled the captured image will be stretched |
+| AUTO_STRETCH_AMOUNT | 10 | Indicates how much to increase the contrast. For example, 0 is none, 3 is typical and 20 is a lot |
+| AUTO_STRETCH_MID_POINT | 10% | Indicates where the maximum change 'slope' in contrast should fall in the resultant image (0 is white; 50% is middle-gray; 100% is black). |
+
+When using the cropping options the image is cropped from the center so you will need to experiment with the correct width and height values. Normally there will be no need to amend the offset values.
 
 In order to upload images and videos to your website, you'll need to fill your FTP connection details in **ftp-settings.sh**
 ```shell
 nano scripts/ftp-settings.sh
 ```
-**saveImageNight.sh** is called every time the camera takes a new image at night. You can play with this file in case your sensor is not dead center.
+**saveImageNight.sh** is called every time the camera takes a new image at night. If dark subtraction is enabled, this is where it happens
 
-**saveImageDay.sh** is called every time the camera takes a new image during the day. Images are not archived on the SD card. They are only resized and uploaded periodically in order to monitor the sky by day.
+**saveImageDay.sh** is called every time the camera takes a new image during the day.
 
 At the end of the night **endOfNight.sh** is run. It calls a few other scripts based on your config.sh content.
 
@@ -179,11 +191,17 @@ If you are using a desktop environment (Pixel, Mate, LXDE, etc) or using remote 
 ![](http://www.thomasjacquin.com/allsky-portal/screenshots/camera-settings.jpg)
 
 If you don't want to configure the camera using the terminal, you can install the web based [graphical interface](https://github.com/thomasjacquin/allsky-portal).
-Please note that this will change your hostname to allsky, install lighttpd and replace your /var/www/html directory. It will also move settings.json to `/etc/raspap/settings.json`.
+Please note that this will change your hostname to allsky (or whatever you called it when installing), install lighttpd and replace your /var/www/html directory. It will also move settings.json to `/etc/raspap/settings.json`.
 
 ```shell
 sudo gui/install.sh
 ```
+Or if you don't want to use the default name of 'allsky' for your pi use the following
+
+```shell
+sudo gui/install.sh piname
+```
+
 **Note:*** If you use an older version of Raspbian, the install script may fail on php7.0-cgi dependency. Edit gui/install.sh and replace php7.0-cgi by php5-cgi.
 
 After you complete the GUI setup, you'll be able to administer the camera using the web UI by navigating to
@@ -193,6 +211,11 @@ http://your_raspberry_IP
 or
 ```sh
 http://allsky.local
+```
+
+Note: If you changed the name of your pi during the gui install then use
+```sh
+http://piname.local
 ```
 
 The default username is 'admin' and the default password is 'secret'.
@@ -213,27 +236,30 @@ The dark frame subtraction feature was implemented to remove hot pixels from nig
 
 You only need to follow these instructions once.
 
-Manual method:
-* make sure config.sh has a DARK_FRAME configuration. Default is "dark.png"
+If you don't use the GUI:
 * Place a cover on your camera lens/dome
 * Set darkframe to 1 in settings.json
 * Restart the allsky service: ```sudo service allsky restart```
-* A new file has been created at the root of the project: dark.png by default
+* Dark frames are created in a `darks` directory. A new dark is created every time the sensor temperature changes by 1 degree C.
 * Set darkframe to 0 in settings.json
 * Restart the allsky service: ```sudo service allsky restart```
 * Remove the cover from the lens/dome
+* Enable dark subtraction in `config.sh` by setting `DARK_FRAME_SUBTRACTION` to true
 
 GUI method:
-* make sure config.sh has a DARK_FRAME configuration. Default is "dark.png"
 * Place a cover on your camera lens/dome
 * Open the Camera Settings tab and set Dark Frame to Yes.
 * Hit the Save button
-* A new file has been created at the root of the project: dark.png by default
+* Dark frames are created in a `darks` directory. A new dark is created every time the sensor temperature changes by 1 degree C.
 * On the Camera Settings tab and set Dark Frame to No.
 * Hit the Save button
 * Remove the cover from the lens/dome
+* Open the scripts editor tab, load `config.sh` and set `DARK_FRAME_SUBTRACTION` to true
 
-The dark frame is now created and will always be subtracted from captured images. In case the outside temperature varies significantly and you start seeing more / less hot pixels, you can run these instructions again to create a new dark frame.
+The dark frame subtraction is temperature dependant.
+Running the dark frame capture while ambiant temperature is varying results in a larger set of darks (1 per degree C).
+During the night, the sensor temperature is used to select the most appropriate dark frame.
+Dark frames are only subtracted from images taken at night.
 
 ## Timelapse
 
@@ -269,7 +295,7 @@ The program takes 3 arguments:
 
 Example when running the program manually:
 ```
-./keogram ./images/20180223/ jpg ./images/20180223/keogram.jpg
+./keogram ./images/20180223/ jpg ./images/20180223/keogram/keogram.jpg
 ```
 
 To disable keograms, open **config.sh** and set
@@ -291,7 +317,7 @@ The program takes 4 arguments:
 
 Example when running the program manually:
 ```
-./startrails ./images/20180223/ jpg 0.15 ./images/20180223/startrails.jpg
+./startrails ./images/20180223/ jpg 0.15 ./images/20180223/startrails/startrails.jpg
 ```
 
 To disable automatic startrails, open **config.sh** and set
@@ -345,14 +371,21 @@ If you've built an allsky camera, please send me a message and I'll add you to t
 	* Keograms and Startrails generation is now much faster thanks to a rewrite by Jarno Paananen.
 * version **0.6**: Added daytime exposure and auto-exposure capability
 	* Added -maxexposure, -autoexposure, -maxgain, -autogain options. Note that using autoexposure and autogain at the same time may produce unexpected results (black frames).
- 	* Autostart is now based on systemd and should work on all raspbian based systems, including headless distributions. Remote controlling will not start multiple instances of the software.
- 	* Replaced `nodisplay` option with `preview` argument. No preview in autostart mode.
- 	* When using the GUI, camera options can be saved without rebooting the RPi.
- 	* Added a publicly accessible preview to the GUI: public.php
+	* Autostart is now based on systemd and should work on all raspbian based systems, including headless distributions. Remote controlling will not start multiple instances of the software.
+	* Replaced `nodisplay` option with `preview` argument. No preview in autostart mode.
+	* When using the GUI, camera options can be saved without rebooting the RPi.
+	* Added a publicly accessible preview to the GUI: public.php
 	* Changed exposure unit to milliseconds instead of microseconds
+* version **0.7**: Added Raspberry Pi camera HQ support (Based on Rob Musquetier's fork)
+	* Support for x86 architecture (Ubuntu, etc)
+	* Temperature dependant dark frame library
+	* Browser based script editor
+	* Configuration variables to crop black area around image
+	* Timelapse frame rate setting
+	* Changed font size default value
 
 ## Donation
 
-If you found this project useful, you can give me a cup of coffee :)
+If you found this project useful, here's a link to send me a cup of coffee :)
 
 [![](https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=MEBU2KN75G2NG&source=url)

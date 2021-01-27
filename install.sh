@@ -9,7 +9,7 @@ echo -e "**********************************************${NC}"
 echo -en '\n'
 
 echo -en "${GREEN}* Dependencies installation\n${NC}"
-apt-get update && apt-get install libopencv-dev libusb-dev ffmpeg gawk lftp jq imagemagick -y
+apt-get update && apt-get install libopencv-dev libusb-dev libusb-1.0-0-dev ffmpeg gawk lftp jq imagemagick -y
 echo -en '\n'
 
 echo -en "${GREEN}* Compile allsky software\n${NC}"
@@ -27,6 +27,8 @@ echo -en '\n'
 
 echo -en "${GREEN}* Autostart script\n${NC}"
 sed -i '/allsky.sh/d' /etc/xdg/lxsession/LXDE-pi/autostart
+sed -i "s|User=pi|User=`logname`|g" autostart/allsky.service
+sed -i "s|/home/pi/allsky|$PWD|g" autostart/allsky.service
 cp autostart/allsky.service /lib/systemd/system/
 chown root:root /lib/systemd/system/allsky.service
 chmod 0644 /lib/systemd/system/allsky.service
@@ -36,16 +38,21 @@ echo -en "${GREEN}* Configure log rotation\n${NC}"
 cp autostart/allsky /etc/logrotate.d/
 chown root:root /etc/logrotate.d/allsky
 chmod 0644 /etc/logrotate.d/allsky
-cp autostart/allsky.conf /etc/rsyslog.d/
+cp autostart/allsky.conf /etc/rsyslog.d/ 
 chown root:root /etc/rsyslog.d/allsky.conf
 chmod 0644 /etc/rsyslog.d/allsky.conf
 echo -en '\n'
 
+echo -en "${GREEN}* Add ALLSKY_HOME environment variable\n${NC}"
+echo "export ALLSKY_HOME=$PWD" | sudo tee /etc/profile.d/allsky.sh
+echo -en '\n'
+
 echo -en "${GREEN}* Copy camera settings files\n${NC}"
-cp settings.json.repo settings.json
+cp settings_ZWO.json.repo settings_ZWO.json
+cp settings_RPiHQ.json.repo settings_RPiHQ.json
 cp config.sh.repo config.sh
 cp scripts/ftp-settings.sh.repo scripts/ftp-settings.sh
-chown -R pi:pi ../allsky
+chown -R `logname`:`logname` ../allsky
 systemctl daemon-reload
 systemctl enable allsky.service
 echo -en '\n'
