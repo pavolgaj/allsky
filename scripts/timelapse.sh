@@ -25,6 +25,15 @@ ls -rt $ALLSKY_HOME/images/$1/*.$EXTENSION |
 gawk 'BEGIN{ a=1 }{ printf "ln -sv %s $ALLSKY_HOME/images/'$1'/sequence/%04d.'$EXTENSION'\n", $0, a++ }' |
 bash
 
+SCALE=""
+TIMELAPSEWIDTH=${TIMELAPSEWIDTH:-0}
+
+if [ "${TIMELAPSEWIDTH}" != 0 ]
+  then
+    SCALE="-filter:v scale=${TIMELAPSEWIDTH:0}:${TIMELAPSEHEIGHT:0}"
+    echo "Using video scale ${TIMELAPSEWIDTH} * ${TIMELAPSEHEIGHT}"
+fi
+
 ffmpeg -y -f image2 \
 	-r $FPS \
 	-i images/$1/sequence/%04d.$EXTENSION \
@@ -32,10 +41,15 @@ ffmpeg -y -f image2 \
 	-b:v 2000k \
 	-pix_fmt yuv420p \
 	-movflags +faststart \
+	$SCALE \
 	images/$1/allsky-$1.mp4
 
 if [ "$UPLOAD_VIDEO" = true ] ; then
-	lftp "$PROTOCOL"://"$USER":"$PASSWORD"@"$HOST":"$MP4DIR" -e "set net:max-retries 1; put images/$1/allsky-$1.mp4; bye"
+        if [[ "$PROTOCOL" == "S3" ]] ; then
+                $AWS_CLI_DIR/aws s3 cp images/$1/allsky-$1.mp4 s3://$S3_BUCKET$MP4DIR --acl $S3_ACL &
+        else
+                lftp "$PROTOCOL"://"$USER":"$PASSWORD"@"$HOST":"$MP4DIR" -e "set net:max-retries 1; put images/$1/allsky-$1.mp4; bye" &
+        fi
 fi
 
 echo -en "* ${GREEN}Deleting sequence${NC}\n"

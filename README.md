@@ -116,6 +116,8 @@ nano config.sh
 | UPLOAD_VIDEO | false | Set to true to upload the timelapse to a server |
 | POST_END_OF_NIGHT_DATA | false | Set to true to send some data to your server at the end of each night |
 | TIMELAPSE | true | Build a timelapse at the end of the night |
+| TIMELAPSEWIDTH | 0 | Overwrite the width of the generated timelapse, must be divisible by 2
+| TIMELAPSEHEIGHT | 0 | Overwrite the height of the generated timelapse, must be divisible by 2
 | FPS | 25 | The timelapse frame rate (frames per second)
 | KEOGRAM | true | Builds a keogram at the end of the night |
 | UPLOAD_KEOGRAM | false | Set to true to upload the keogram to your server |
@@ -139,7 +141,7 @@ nano config.sh
 
 When using the cropping options the image is cropped from the center so you will need to experiment with the correct width and height values. Normally there will be no need to amend the offset values.
 
-In order to upload images and videos to your website, you'll need to fill your FTP connection details in **ftp-settings.sh**
+In order to upload images and videos to your website, you'll need to fill your FTP or Amazon S3 connection details in **ftp-settings.sh**
 ```shell
 nano scripts/ftp-settings.sh
 ```
